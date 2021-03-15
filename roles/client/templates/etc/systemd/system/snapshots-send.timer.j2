@@ -1,0 +1,8 @@
+[Unit]
+Description=Send snapshots at {{ snapshots_send_calendar }} every day
+
+[Timer]
+OnCalendar=*-*-* {{ snapshots_send_calendar }}:00
+
+[Install]
+WantedBy=timers.target

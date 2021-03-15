@@ -1,0 +1,8 @@
+/var/log/snapshots/*.log
+{
+    monthly
+    missingok
+    rotate 14
+    compress
+    notifempty
+}

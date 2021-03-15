@@ -1,0 +1,6 @@
+/
+{% if snapshots_extra_volumes is defined %}
+{% for volume in snapshots_extra_volumes %}
+{{ volume }}
+{% endfor %}
+{% endif %}

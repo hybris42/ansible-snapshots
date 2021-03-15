@@ -1,0 +1,5 @@
+---
+
+- name: Display snapshots-send timers calendar
+  debug:
+    var: snapshots_send_calendar

@@ -1,0 +1,13 @@
+snapshots:
+  server:
+    snapshots_send_calendar: "1:15"
+  client1:
+    snapshots_send_calendar: "1:20"
+    snapshots_extra_volumes:
+      - /home
+  client2:
+    snapshots_send_calendar: "1:25"
+    snapshots_extra_volumes:
+      - "/data SNAPSHOTS_KEEP_MONTHLY_REMOTE=0"
+  vars:
+    snapshots_server: server

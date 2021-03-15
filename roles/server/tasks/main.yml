@@ -1,0 +1,35 @@
+---
+
+- name: Ensure snapshots user exist
+  user:
+    name: "{{ snapshots_user }}"
+    state: present
+
+- name: Ensure snapshot path exists
+  file:
+    path: "{{ snapshots_path }}"
+    owner: "{{ snapshots_user }}"
+    group: "{{ snapshots_user }}"
+    state: directory
+
+- name: Ensure snapshots path is in a btrfs volume
+  shell: "test $(findmnt -n -o FSTYPE --target {{ snapshots_path }}) = 'btrfs'"
+  check_mode: no
+  changed_when: false
+
+- name: Sudoers rights on btrfs
+  copy:
+    src: etc/sudoers.d/snapshots
+    dest: /etc/sudoers.d/snapshots
+
+- name: Ensure log directory exists
+  file:
+    path: /var/log/snapshots/
+    owner: "{{ snapshots_user }}"
+    group: "{{ snapshots_user }}"
+    state: directory
+
+- name: Create logrotate file
+  copy:
+    src: etc/logrotate.d/snapshots
+    dest: /etc/logrotate.d/snapshots

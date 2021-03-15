@@ -1,0 +1,13 @@
+---
+
+- hosts: snapshots
+  roles:
+    - role: server
+      tags: snapshots-server
+      when: snapshots_server|default("") == inventory_hostname
+    - role: client
+      tags: snapshots-client
+      when: snapshots_send_calendar is defined
+    - role: info
+      tags: info
+      when: snapshots_send_calendar is defined

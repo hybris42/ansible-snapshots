@@ -1,0 +1,14 @@
+SNAPSHOTS_KEEP_LOCAL={{ snapshots_keep_local }}
+SNAPSHOTS_KEEP_DAILY_REMOTE={{ snapshots_keep_daily_remote }}
+SNAPSHOTS_KEEP_MONTHLY_REMOTE={{ snapshots_keep_monthly_remote }}
+
+SNAPSHOTS_USER={{ snapshots_user }}
+SNAPSHOTS_SERVER={{ snapshots_server }}
+SNAPSHOTS_PATH={{ snapshots_path }}/$(hostname)
+
+{% if metrics_url is defined %}
+METRICS_URL={{ metrics_url }}
+{% endif %}
+{% if metrics_auth is defined %}
+METRICS_AUTH={{ metrics_auth }}
+{% endif %}

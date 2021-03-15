@@ -1,0 +1,90 @@
+---
+
+- name: Preflight checks
+  tags: lint
+  block:
+  - name: Assert some variables is defined
+    assert:
+      that:
+        - snapshots_server is defined
+
+- name: Get server ssh signature
+  shell: |
+    cat /etc/ssh/ssh_host_ecdsa_key.pub | cut -d' '  -f-2
+  delegate_to: "{{ snapshots_server }}"
+  check_mode: false
+  register: snapshots_server_signature
+  changed_when: false
+
+- name: Add server signature
+  known_hosts:
+    host: "{{ snapshots_server }}"
+    key: "{{ snapshots_server }},{{ hostvars[snapshots_server]['ansible_host'] }} {{snapshots_server_signature.stdout}}"
+
+- name: Copy systemd services and scripts
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - src:  etc/systemd/system/snapshots.service
+      dest: /etc/systemd/system/snapshots.service
+    - src: etc/systemd/system/snapshots.timer
+      dest: /etc/systemd/system/snapshots.timer
+    - src:  etc/systemd/system/snapshots-send.service
+      dest: /etc/systemd/system/snapshots-send.service
+    - src:  usr/local/sbin/snapshots
+      dest: /usr/local/sbin/snapshots
+    - src:  usr/local/sbin/snapshots-remove
+      dest: /usr/local/sbin/snapshots-remove
+    - src:  usr/local/sbin/snapshots-send
+      dest: /usr/local/sbin/snapshots-send
+
+- name: Create various files from templates
+  template:
+    src:  "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - src:  etc/default/snapshots.j2
+      dest: /etc/default/snapshots
+    - src:  etc/snapshots.list.j2
+      dest: /etc/snapshots.list
+    - src:  etc/systemd/system/snapshots-send.timer.j2
+      dest: /etc/systemd/system/snapshots-send.timer
+
+- name: Generate ssh key
+  openssh_keypair:
+    path: /root/.ssh/id_rsa
+    regenerate: never
+
+- name: Get ssh public keypair
+  shell: |
+    cat /root/.ssh/id_rsa.pub
+  check_mode: false
+  register: snapshots_client_public_key
+  changed_when: false
+
+- name: Get snapshots users infos
+  user:
+    name: snapshots
+    state: present
+  delegate_to: "{{ snapshots_server }}"
+  register: snapshots_user_infos
+
+- name: Ensure client is allowed to ssh
+  lineinfile:
+    path: "{{ snapshots_user_infos.home }}/.ssh/authorized_keys"
+    line: "{{ snapshots_client_public_key.stdout }}"
+    state: present
+  become: yes
+  become_user: "{{ snapshots_user }}"
+  delegate_to: "{{ snapshots_server }}"
+
+- name: Start and enable timers
+  service:
+    name: "{{ item }}.timer"
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  with_items:
+    - snapshots
+    - snapshots-send
