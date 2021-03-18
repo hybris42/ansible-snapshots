@@ -3,10 +3,11 @@
 - name: Preflight checks
   tags: lint
   block:
-  - name: Assert some variables is defined
+  - name: Assert snapshots_server exists and is in snapshots group
     assert:
       that:
         - snapshots_server is defined
+        - snapshots_server in groups['snapshots']
 
 - name: Get server ssh signature
   shell: |
@@ -15,6 +16,7 @@
   check_mode: false
   register: snapshots_server_signature
   changed_when: false
+
 
 - name: Add server signature
   known_hosts:
@@ -34,10 +36,22 @@
       dest: /etc/systemd/system/snapshots-send.service
     - src:  usr/local/sbin/snapshots
       dest: /usr/local/sbin/snapshots
+    - src:  usr/local/sbin/snapshots-mount
+      dest: /usr/local/sbin/snapshots-mount
     - src:  usr/local/sbin/snapshots-remove
       dest: /usr/local/sbin/snapshots-remove
     - src:  usr/local/sbin/snapshots-send
       dest: /usr/local/sbin/snapshots-send
+
+- name: Ensure execution rights on scripts
+  file:
+    path: "/usr/local/sbin/{{ item }}"
+    mode: 0700
+  with_items:
+    - snapshots
+    - snapshots-mount
+    - snapshots-remove
+    - snapshots-send
 
 - name: Create various files from templates
   template:
@@ -63,7 +77,7 @@
   register: snapshots_client_public_key
   changed_when: false
 
-- name: Get snapshots users infos
+- name: Get snapshots user infos
   user:
     name: snapshots
     state: present
@@ -78,6 +92,19 @@
   become: yes
   become_user: "{{ snapshots_user }}"
   delegate_to: "{{ snapshots_server }}"
+
+- name: Ensure NFS export
+  lineinfile:
+    path: /etc/exports
+    line: "{{ snapshots_path }}/{{ inventory_hostname }} {{ ansible_host }}/255.255.255.0(ro,no_root_squash,subtree_check)"
+    state: present
+  delegate_to: "{{ snapshots_server }}"
+  register: etc_exports
+
+- name: Run exportfs if needed
+  shell: "exportfs -a"
+  delegate_to: "{{ snapshots_server }}"
+  when: etc_exports.changed
 
 - name: Start and enable timers
   service:
