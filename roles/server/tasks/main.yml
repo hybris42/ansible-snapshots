@@ -22,6 +22,31 @@
     src: etc/sudoers.d/snapshots
     dest: /etc/sudoers.d/snapshots
 
+- name: Copy snapshots-rsync script
+  copy:
+    src: usr/local/bin/snapshots-rsync
+    dest: /usr/local/bin/snapshots-rsync
+    mode: 0755
+
+- name: Add snapshots-rsync service file
+  copy:
+    src: etc/systemd/system/snapshots-rsync.service
+    dest: /etc/systemd/system/snapshots-rsync.service
+
+- name: Create snapshots-rsync timer file
+  template:
+    src: etc/systemd/system/snapshots-rsync.timer.j2
+    dest: /etc/systemd/system/snapshots-rsync.timer
+  when: snapshots_rsync_calendar is defined
+
+- name: Start and enable snapshots-rsync timer
+  service:
+    name: snapshots-rsync.timer
+    state: started
+    enabled: yes
+    daemon_reload: yes
+  when: snapshots_rsync_calendar is defined
+
 - name: Ensure log directory exists
   file:
     path: /var/log/snapshots/

@@ -3,11 +3,14 @@
 - hosts: snapshots
   roles:
     - role: server
-      tags: snapshots-server
+      tags: server
       when: snapshots_server|default("") == inventory_hostname
     - role: client
-      tags: snapshots-client
+      tags: client
       when: snapshots_send_calendar is defined
+    - role: client-rsync
+      tags: client-rsync
+      when: snapshots_rsync|default(False)
     - role: info
       tags: info
       when: snapshots_send_calendar is defined

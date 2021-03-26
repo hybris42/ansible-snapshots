@@ -10,8 +10,7 @@
         - snapshots_server in groups['snapshots']
 
 - name: Get server ssh signature
-  shell: |
-    cat /etc/ssh/ssh_host_ecdsa_key.pub | cut -d' '  -f-2
+  shell: cat /etc/ssh/ssh_host_ecdsa_key.pub | cut -d' '  -f-2
   delegate_to: "{{ snapshots_server }}"
   check_mode: false
   register: snapshots_server_signature
@@ -71,8 +70,7 @@
     regenerate: never
 
 - name: Get ssh public keypair
-  shell: |
-    cat /root/.ssh/id_rsa.pub
+  shell: cat /root/.ssh/id_rsa.pub
   check_mode: false
   register: snapshots_client_public_key
   changed_when: false

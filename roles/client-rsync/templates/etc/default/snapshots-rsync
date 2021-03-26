@@ -1,0 +1,3 @@
+TARGET_HOST={{  hostvars[inventory_hostname]['ansible_host']  }}
+SNAPSHOTS_PATH=/srv/snapshots/{{ inventory_hostname }}
+SNAPSHOTS_USER={{ snapshots_user }}

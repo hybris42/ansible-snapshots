@@ -1,0 +1,10 @@
+[Unit]
+Description=Snapshots using rsync for every hosts configured
+
+[Service]
+User=snapshots
+EnvironmentFile=/etc/default/snapshots
+ExecStart=bash -c "for i in /etc/default/snapshots-rsync@*; do /usr/local/bin/snapshots-rsync $i; done"
+
+[Install]
+WantedBy=multi-user.target

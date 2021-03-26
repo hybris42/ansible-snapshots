@@ -1,0 +1,36 @@
+---
+
+- name: Preflight checks
+  tags: lint
+  block:
+  - name: Assert snapshots_server exists and is in snapshots group
+    assert:
+      that:
+        - snapshots_server is defined
+        - snapshots_server in groups['snapshots']
+
+- name: Get client ssh signature
+  shell: cat /etc/ssh/ssh_host_ecdsa_key.pub | cut -d' ' -f-2
+  check_mode: false
+  register: snapshots_server_signature
+  changed_when: false
+
+- name: Get snapshots user infos
+  user:
+    name: snapshots
+    state: present
+  delegate_to: "{{ snapshots_server }}"
+  register: snapshots_user_infos
+
+- name: Add client signature
+  known_hosts:
+    host: "{{ inventory_hostname }}"
+    key: "{{ inventory_hostname }},{{ hostvars[inventory_hostname]['ansible_host'] }} {{snapshots_server_signature.stdout}}"
+    path: "{{ snapshots_user_infos.home }}/.ssh/known_hosts"
+  delegate_to: "{{ snapshots_server }}"
+
+- name: Create default file on server
+  template:
+    src: etc/default/snapshots-rsync
+    dest: "/etc/default/snapshots-rsync@{{ inventory_hostname }}"
+  delegate_to: "{{ snapshots_server }}"

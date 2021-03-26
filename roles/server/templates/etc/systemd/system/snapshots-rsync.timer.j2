@@ -1,0 +1,8 @@
+[Unit]
+Description=Daily rsync snapshots at {{ snapshots_rsync_calendar }}
+
+[Timer]
+OnCalendar=*-*-* {{ snapshots_rsync_calendar }}:00
+
+[Install]
+WantedBy=timers.target

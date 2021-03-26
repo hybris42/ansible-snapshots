@@ -1,0 +1,60 @@
+#! /bin/bash
+
+help () {
+    echo "usage: snapshots-rsync ENV_FILE"
+}
+
+if [ $# -ne 1 ]; then
+    help
+    exit 1
+fi
+if [ ! -e $1  ]; then
+    echo "error: environment file $1 does not exist"
+    exit 2
+fi
+
+source $1
+volume="/"
+
+# Check connection
+if ! ssh root@${TARGET_HOST} true 2> /dev/null; then
+    echo "ERROR: no access to host ${TARGET_HOST}"
+    exit 2
+fi
+
+# Rsync almost everything
+[ -d ${SNAPSHOTS_PATH} ] || sudo btrfs subvolume create ${SNAPSHOTS_PATH}
+rsync -aAX --delete root@${TARGET_HOST}:/ --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/lost+found","/.daily-*","/.monthly-*"} ${SNAPSHOTS_PATH}
+
+# Create daily snapshot
+if ! sudo btrfs subvolume show ${SNAPSHOTS_PATH}/.daily-$(date +%Y-%m-%d) > /dev/null 2>&1; then
+    sudo btrfs subvolume snapshot -r ${SNAPSHOTS_PATH} ${SNAPSHOTS_PATH}/.daily-$(date +%Y-%m-%d)
+    sync
+else
+    echo "Snapshot ${SNAPSHOTS_PATH}/.daily-$(date +%Y-%m-%d) already exists"
+fi
+
+# Cleaning daily snapshots to keep no more than 30
+# (or SNAPSHOTS_KEEP_DAILY_REMOTE if set in /etc/default/snapshots)
+echo "Keeping last ${SNAPSHOTS_KEEP_DAILY_REMOTE:-30} daily snapshots of ${volume} remotely"
+while [ $(ls -d ${SNAPSHOTS_PATH}${volume}.daily-* | wc -l) -gt ${SNAPSHOTS_KEEP_DAILY_REMOTE:-30} ]; do
+    sudo btrfs subvolume delete $(ls -d ${SNAPSHOTS_PATH}${volume}.daily-* | head -n1)
+done
+
+# Monthly snapshot from last one
+[ ${SNAPSHOTS_KEEP_MONTHLY_REMOTE} -eq 0 ] && continue
+last_snapshot_path=$(ls -d ${SNAPSHOTS_PATH}${volume}.daily-* | tail -n1)
+last_snapshot_month=${last_snapshot_path:(-10):7}
+if $(test ! -e ${SNAPSHOTS_PATH}${volume}.monthly-${last_snapshot_month}); then
+    sudo btrfs subvolume snapshot -r ${last_snapshot_path} ${SNAPSHOTS_PATH}${volume}.monthly-${last_snapshot_month}
+    sync
+else
+    [ -n "${DEBUG}" ] && echo "Monthly snapshot ${SNAPSHOTS_PATH}${volume}.monthly-${last_snapshot_month} already exists"
+fi
+
+# Cleaning monthly snapshots to keep no more than 6
+# (or SNAPSHOTS_KEEP_MONTHLY_REMOTE if set in /etc/default/snapshots)
+echo "Keeping last ${SNAPSHOTS_KEEP_MONTHLY_REMOTE:-6} monthly snapshots of ${volume} remotely"
+while [ $(ls -d ${SNAPSHOTS_PATH}${volume}.monthly-* | wc -l) -gt ${SNAPSHOTS_KEEP_MONTHLY_REMOTE:-6} ]; do
+    sudo btrfs subvolume delete $(ls -d ${SNAPSHOTS_PATH}${volume}.monthly-* | head -n1)
+done
